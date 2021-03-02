@@ -69,7 +69,8 @@ jobs:
       - name: Test version string
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          go run tpl.go -v | grep ${GITHUB_REF##*/}
+          go run tpl.go -v
+          echo "${GITHUB_REF##*/}"
 
       - name: Calculate checksums
         run: |
