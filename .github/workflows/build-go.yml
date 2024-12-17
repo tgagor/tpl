@@ -20,8 +20,6 @@ on:
       - main
       - feature/*
       - bugfix/*
-    tags:
-      - 'v*.*.*'
   pull_request:
     branches:
       - main
