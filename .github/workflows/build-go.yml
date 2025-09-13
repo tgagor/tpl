@@ -40,7 +40,7 @@ jobs:
             arch: arm64 # Windows ARM64 is not supported by Go
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Setup GoLang
       uses: actions/setup-go@v5
@@ -124,7 +124,7 @@ jobs:
           - os: windows-latest
             binary: tpl-windows-amd64.exe
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -225,7 +225,7 @@ jobs:
       - build
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
