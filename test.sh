@@ -25,4 +25,4 @@ go run tpl.go -t test/test.tpl | diff -y test/test.txt - && echo Tests succeeded
 echo
 echo
 
-go run tpl.go -t test/test.tpl -o test.out && diff -y test/test.txt test.out && echo Tests succeeded! || echo Tests failed!
+go run tpl.go -t test/test.tpl -o test/test.out && diff -y test/test.txt test/test.out && echo Tests succeeded! || echo Tests failed!

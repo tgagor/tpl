@@ -114,6 +114,22 @@ func TestTplPrefixFilter(t *testing.T) {
 	assert.Contains(t, output, "GLOBAL_VAR: <no value>")
 }
 
+func TestTplOutputFile(t *testing.T) {
+	t.Parallel()
+
+	env := mergedEnv(baseEnv())
+	outputFile := t.TempDir() + "/output.txt"
+
+	_, err := tpl(t, env, "-t", "test/test.tpl", "-o", outputFile)
+	require.NoError(t, err)
+
+	// Verify output file was created and contains expected content
+	content := readFileAsString(t, outputFile)
+	expected := readFileAsString(t, "test/test.txt")
+
+	require.Equal(t, strings.TrimRight(expected, "\n"), strings.TrimRight(content, "\n"))
+}
+
 func TestTplLargeEnvCounts(t *testing.T) {
 	t.Parallel()
 	expected := readFileAsString(t, "test/test.txt")
