@@ -25,9 +25,40 @@ var customFuctions = template.FuncMap{
 	"mustInclude": mustInclude,
 }
 
-func inputToObject(inputStr string, debug *bool) (result interface{}, err error) {
-	if *debug {
+var (
+	reInsertQuoteAfterComma  = regexp.MustCompile(`,([^[{"])`)
+	reInsertQuoteBeforeComma = regexp.MustCompile(`([^]}"]),`)
+	reInsertQuoteAfterBrace  = regexp.MustCompile(`([\[{])([^][}{,"])`)
+	reInsertQuoteBeforeBrace = regexp.MustCompile(`([^][}{,"])([\]}])`)
+	reInsertQuoteAfterColon  = regexp.MustCompile(`([^:]):([^:[{"])`)
+	reInsertQuoteBeforeColon = regexp.MustCompile(`([^:"]):([^:])`)
+	reReplaceDoubleColon     = regexp.MustCompile(`::`)
+)
+
+func looksLikeJSON(inputStr string) bool {
+	trimmed := strings.TrimSpace(inputStr)
+	if trimmed == "" {
+		return false
+	}
+
+	switch trimmed[0] {
+	case '{', '[', '"':
+		return true
+	default:
+		return false
+	}
+}
+
+func inputToObject(inputStr string, debug bool) (result interface{}, err error) {
+	if debug {
 		fmt.Fprintf(os.Stderr, "----\ninput is: %v\n", inputStr)
+	}
+
+	if !looksLikeJSON(inputStr) {
+		if debug {
+			fmt.Fprintf(os.Stderr, "result is: %v\n----\n", inputStr)
+		}
+		return inputStr, nil
 	}
 
 	// try to parse a plain json first
@@ -37,21 +68,21 @@ func inputToObject(inputStr string, debug *bool) (result interface{}, err error)
 	// now try to enrich unquoted json
 	if err != nil {
 		// insert " after , if next is none of [ { "
-		jsonStr = regexp.MustCompile(`,([^[{"])`).ReplaceAllString(jsonStr, ",\"$1")
+		jsonStr = reInsertQuoteAfterComma.ReplaceAllString(jsonStr, ",\"$1")
 		// insert " before , if previous is none of ] } "
-		jsonStr = regexp.MustCompile(`([^]}"]),`).ReplaceAllString(jsonStr, "$1\",")
+		jsonStr = reInsertQuoteBeforeComma.ReplaceAllString(jsonStr, "$1\",")
 		// insert " after [ { if next is none of ] [ } { , "
-		jsonStr = regexp.MustCompile(`([\[{])([^][}{,"])`).ReplaceAllString(jsonStr, "$1\"$2")
+		jsonStr = reInsertQuoteAfterBrace.ReplaceAllString(jsonStr, "$1\"$2")
 		// insert " before ] } if previous is none of ] [ } { , "
-		jsonStr = regexp.MustCompile(`([^][}{,"])([\]}])`).ReplaceAllString(jsonStr, "$1\"$2")
+		jsonStr = reInsertQuoteBeforeBrace.ReplaceAllString(jsonStr, "$1\"$2")
 		// insert " after : if next is none of : [ { "
-		jsonStr = regexp.MustCompile(`([^:]):([^:[{"])`).ReplaceAllString(jsonStr, "$1:\"$2")
+		jsonStr = reInsertQuoteAfterColon.ReplaceAllString(jsonStr, "$1:\"$2")
 		// insert " before : if previous is not :
-		jsonStr = regexp.MustCompile(`([^:"]):([^:])`).ReplaceAllString(jsonStr, "$1\":$2")
+		jsonStr = reInsertQuoteBeforeColon.ReplaceAllString(jsonStr, "$1\":$2")
 		// replace :: with : (double colons can be used to escape a colon)
-		jsonStr = regexp.MustCompile(`::`).ReplaceAllString(jsonStr, ":")
+		jsonStr = reReplaceDoubleColon.ReplaceAllString(jsonStr, ":")
 	}
-	if *debug {
+	if debug {
 		fmt.Fprintf(os.Stderr, "json is: %v\n", jsonStr)
 	}
 
@@ -61,7 +92,7 @@ func inputToObject(inputStr string, debug *bool) (result interface{}, err error)
 		result = inputStr
 	}
 
-	if *debug {
+	if debug {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "result is: %v, error: %v\n----\n", result, err)
 		} else {
@@ -112,6 +143,9 @@ func main() {
 	flag.Parse()
 
 	if *version {
+		if BuildVersion == "" {
+			BuildVersion = "development" // Fallback if not set during build
+		}
 		fmt.Fprintf(os.Stdout, "version %s\n", BuildVersion)
 		os.Exit(0)
 	}
@@ -128,14 +162,16 @@ func main() {
 
 	// generate environment map
 	for _, envVar := range os.Environ() {
-		envKeyValuePair := strings.SplitN(envVar, "=", 2)
-		envKey, envValue := envKeyValuePair[0], envKeyValuePair[1]
+		envKey, envValue, ok := strings.Cut(envVar, "=")
+		if !ok {
+			continue
+		}
 
 		if !strings.HasPrefix(envKey, *prefix) {
 			continue
 		}
 
-		data, err := inputToObject(envValue, debug)
+		data, err := inputToObject(envValue, *debug)
 		if err != nil {
 			environment[envKey] = envValue
 		} else {
