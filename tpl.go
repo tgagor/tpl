@@ -15,9 +15,13 @@ import (
 	"github.com/Masterminds/sprig/v3"
 )
 
-var environment = make(map[string]interface{})
-var templateFile *string
 var BuildVersion string
+var environment = make(map[string]any)
+var templateFile string
+var debug bool
+var prefix string
+var version bool
+var outputFile string
 
 // add custom functions
 var customFuctions = template.FuncMap{
@@ -34,6 +38,15 @@ var (
 	reInsertQuoteBeforeColon = regexp.MustCompile(`([^:"]):([^:])`)
 	reReplaceDoubleColon     = regexp.MustCompile(`::`)
 )
+
+func init() {
+	// set and parse cmd line flags
+	flag.BoolVar(&debug, "d", false, "enable debug mode")
+	flag.StringVar(&prefix, "p", "", "only consider variables starting with prefix")
+	flag.StringVar(&templateFile, "t", "", "template file")
+	flag.BoolVar(&version, "v", false, "show version")
+	flag.StringVar(&outputFile, "o", "", "output file")
+}
 
 func looksLikeJSON(inputStr string) bool {
 	trimmed := strings.TrimSpace(inputStr)
@@ -107,7 +120,7 @@ func renderInclude(fileName string, safeMode bool) string {
 	// lookup relative file names in same directory like main template
 	lookupDir := ""
 	if !strings.HasPrefix(fileName, "/") {
-		lookupDir = path.Dir(*templateFile)
+		lookupDir = path.Dir(templateFile)
 	}
 
 	// ignore non-existing files
@@ -132,17 +145,12 @@ func mustInclude(fileName string) string {
 	return renderInclude(fileName, false)
 }
 
-func main() {
-	// set and parse cmd line flags
-	debug := flag.Bool("d", false, "enable debug mode")
-	prefix := flag.String("p", "", "only consider variables starting with prefix")
-	templateFile = flag.String("t", "", "template file")
-	version := flag.Bool("v", false, "show version")
-	outputFile := flag.String("o", "", "output file")
 
+
+func main() {
 	flag.Parse()
 
-	if *version {
+	if version {
 		if BuildVersion == "" {
 			BuildVersion = "development" // Fallback if not set during build
 		}
@@ -150,13 +158,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	if len(*templateFile) == 0 {
+	if len(templateFile) == 0 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	if _, err := os.Stat(*templateFile); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "%s not found\n", *templateFile)
+	if _, err := os.Stat(templateFile); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "%s not found\n", templateFile)
 		os.Exit(2)
 	}
 
@@ -167,11 +175,11 @@ func main() {
 			continue
 		}
 
-		if !strings.HasPrefix(envKey, *prefix) {
+		if !strings.HasPrefix(envKey, prefix) {
 			continue
 		}
 
-		data, err := inputToObject(envValue, *debug)
+		data, err := inputToObject(envValue, debug)
 		if err != nil {
 			environment[envKey] = envValue
 		} else {
@@ -179,14 +187,14 @@ func main() {
 		}
 	}
 
-	if *debug {
+	if debug {
 		fmt.Fprintf(os.Stderr, "environment map is: %v\n", environment)
 	}
 
 	outputWriter := os.Stdout
-	if len(*outputFile) > 0 {
+	if len(outputFile) > 0 {
 		// Create file and truncate it if it already exists
-		out, err := os.OpenFile(*outputFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		out, err := os.OpenFile(outputFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error opening output file: %s", err)
 			return
@@ -195,10 +203,10 @@ func main() {
 	}
 
 	// render template
-	tpl := template.Must(template.New(path.Base(*templateFile)).Funcs(sprig.TxtFuncMap()).Funcs(customFuctions).ParseFiles(*templateFile))
+	tpl := template.Must(template.New(path.Base(templateFile)).Funcs(sprig.TxtFuncMap()).Funcs(customFuctions).ParseFiles(templateFile))
 	err := tpl.Execute(outputWriter, environment)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error rendering template %v: %v\n", *templateFile, err)
+		fmt.Fprintf(os.Stderr, "error rendering template %v: %v\n", templateFile, err)
 		os.Exit(2)
 	}
 }
