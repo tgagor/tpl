@@ -74,7 +74,7 @@ json:
 _{{ .json }}
 _{{ toJson .json }}
 {
-{{ range $idx, $key := (keys .json) }}
+{{ range $idx, $key := (sortAlpha (keys .json)) }}
 {{ if gt $idx 0 }},{{ end }}{{ quote $key }}:{{ get $.json $key | quote | upper }}
 {{ end }}
 }

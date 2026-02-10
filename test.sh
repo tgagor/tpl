@@ -20,9 +20,9 @@ go get -v
 echo
 echo
 
-go run tpl.go -t test.tpl | diff -y test.txt - && echo Tests succeeded! || echo Tests failed!
+go run tpl.go -t test/test.tpl | diff -y test/test.txt - && echo Tests succeeded! || echo Tests failed!
 
 echo
 echo
 
-go run tpl.go -t test.tpl -o test.out && diff -y test.txt test.out && echo Tests succeeded! || echo Tests failed!
+go run tpl.go -t test/test.tpl -o test.out && diff -y test/test.txt test.out && echo Tests succeeded! || echo Tests failed!
