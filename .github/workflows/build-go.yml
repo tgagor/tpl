@@ -153,12 +153,12 @@ jobs:
           echo
           echo
 
-          ./${{ matrix.binary }} -t test.tpl | diff -y test.txt - && echo Tests succeeded! || echo Tests failed!
+          ./${{ matrix.binary }} -t test/test.tpl | diff -y test/test.txt - && echo Tests succeeded! || echo Tests failed!
 
           echo
           echo
 
-          ./${{ matrix.binary }} -t test.tpl -o test.out && diff -y test.txt test.out && echo Tests succeeded! || echo Tests failed!
+          ./${{ matrix.binary }} -t test/test.tpl -o test/test.out && diff -y test/test.txt test/test.out && echo Tests succeeded! || echo Tests failed!
 
 
       - name: Run test on Windows
