@@ -94,6 +94,26 @@ func TestTplRendersExpectedOutput(t *testing.T) {
 	require.Equal(t, strings.TrimRight(expected, "\n"), strings.TrimRight(output, "\n"))
 }
 
+func TestTplPrefixFilter(t *testing.T) {
+	t.Parallel()
+
+	env := mergedEnv(map[string]string{
+		"APP_VAR":     "app_value",
+		"APP_VERSION": "1.0.0",
+		"OTHER_VAR":   "other_value",
+		"GLOBAL_VAR":  "global_value",
+	})
+
+	output, err := tpl(t, env, "-p", "APP_", "-t", "test/test_prefix.tpl")
+	require.NoError(t, err)
+
+	// Only APP_* variables should be defined, others should be empty
+	assert.Contains(t, output, "APP_VAR: app_value")
+	assert.Contains(t, output, "APP_VERSION: 1.0.0")
+	assert.Contains(t, output, "OTHER_VAR: <no value>")
+	assert.Contains(t, output, "GLOBAL_VAR: <no value>")
+}
+
 func TestTplLargeEnvCounts(t *testing.T) {
 	t.Parallel()
 	expected := readFileAsString(t, "test/test.txt")
